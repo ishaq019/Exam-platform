@@ -1,283 +1,397 @@
-import React, { useEffect, useState } from "react";
-import RichTextEditor from "./RichTextEditor";
+import React, { useEffect, useMemo, useState } from "react";
+import stripHtml from "../utils/stripHtml";
 import "./styles/QuestionForm.css";
 
-const defaultForm = {
-  questionText: "",
+const emptyOptions = ["", "", "", ""];
+
+const createDefaultForm = () => ({
   questionType: "multipleChoice",
-  options: ["", "", "", ""],
-  correctOption: 0,
+  questionText: "",
+  options: [...emptyOptions],
   correctOptions: [0],
   correctAnswer: "",
-  acceptedAnswers: [""],
+  acceptedAnswers: "",
   marks: 1,
   difficulty: "easy",
+});
+
+const questionTypeOptions = [
+  { value: "multipleChoice", label: "Single select" },
+  { value: "multiSelect", label: "Multi select" },
+  { value: "oneWord", label: "One word answer" },
+];
+
+const difficultyOptions = ["easy", "medium", "hard"];
+
+const escapeHtml = (value) =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const formatQuestionText = (value) =>
+  escapeHtml(value.trim()).replace(/\r?\n/g, "<br />");
+
+const getCorrectIndexes = (question) => {
+  if (
+    question.questionType === "multipleChoice" &&
+    question.correctOption !== undefined &&
+    question.correctOption !== null
+  ) {
+    return [Number(question.correctOption)];
+  }
+
+  if (
+    question.questionType === "multiSelect" &&
+    Array.isArray(question.correctOptions) &&
+    question.correctOptions.length
+  ) {
+    return question.correctOptions.map(Number);
+  }
+
+  if (Array.isArray(question.correctOptions) && question.correctOptions.length) {
+    return question.correctOptions.map(Number);
+  }
+
+  if (question.correctOption !== undefined && question.correctOption !== null) {
+    return [Number(question.correctOption)];
+  }
+
+  return [0];
 };
 
-const textQuestionTypes = ["oneWord", "fillInTheBlank"];
+const normalizeEditingQuestion = (question) => {
+  const options = question.options?.length ? question.options : emptyOptions;
+  const correctOptions = getCorrectIndexes(question).filter(
+    (index) => index >= 0 && index < options.length
+  );
+  const questionType =
+    question.questionType === "oneWord" || question.questionType === "fillInTheBlank"
+      ? "oneWord"
+      : question.questionType === "multiSelect"
+        ? "multiSelect"
+        : "multipleChoice";
 
-const normalizeList = (list) => list.map((item) => item.trim()).filter(Boolean);
+  return {
+    questionType,
+    questionText: stripHtml(question.questionText || ""),
+    options: options.length < 2 ? [...options, ...emptyOptions].slice(0, 4) : options,
+    correctOptions:
+      questionType === "multipleChoice"
+        ? [correctOptions[0] ?? 0]
+        : correctOptions.length
+          ? correctOptions
+          : [0],
+    correctAnswer: question.correctAnswer || "",
+    acceptedAnswers: Array.isArray(question.acceptedAnswers)
+      ? question.acceptedAnswers.join(", ")
+      : "",
+    marks: Number(question.marks || 1),
+    difficulty: question.difficulty || "easy",
+  };
+};
 
 export default function QuestionForm({ onSave, editingQuestion, onCancel }) {
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState(createDefaultForm);
 
   useEffect(() => {
-    if (editingQuestion) {
-      setForm({
-        ...defaultForm,
-        ...editingQuestion,
-        options: editingQuestion.options?.length ? editingQuestion.options : ["", "", "", ""],
-        correctOptions: editingQuestion.correctOptions?.length ? editingQuestion.correctOptions : [0],
-        acceptedAnswers: editingQuestion.acceptedAnswers?.length ? editingQuestion.acceptedAnswers : [""],
-      });
-    } else {
-      setForm(defaultForm);
-    }
+    setForm(editingQuestion ? normalizeEditingQuestion(editingQuestion) : createDefaultForm());
   }, [editingQuestion]);
 
-  const isTextQuestion = textQuestionTypes.includes(form.questionType);
-  const showChoiceOptions = form.questionType === "multipleChoice" || form.questionType === "multiSelect";
+  const selectedCorrect = useMemo(() => new Set(form.correctOptions || []), [form.correctOptions]);
 
-  const changeOption = (i, value) => {
-    const options = [...form.options];
-    options[i] = value;
-    setForm({ ...form, options });
+  const updateOption = (index, value) => {
+    setForm((current) => {
+      const options = [...current.options];
+      options[index] = value;
+      return { ...current, options };
+    });
   };
 
-  const toggleCorrectMulti = (index) => {
-    const next = new Set(form.correctOptions || []);
-    if (next.has(index)) next.delete(index);
-    else next.add(index);
-    setForm({ ...form, correctOptions: Array.from(next).sort((a, b) => a - b) });
+  const addOption = () => {
+    setForm((current) => ({ ...current, options: [...current.options, ""] }));
   };
 
-  const changeAcceptedAnswer = (i, value) => {
-    const acceptedAnswers = [...form.acceptedAnswers];
-    acceptedAnswers[i] = value.toLowerCase();
-    setForm({ ...form, acceptedAnswers });
+  const updateQuestionType = (questionType) => {
+    setForm((current) => ({
+      ...current,
+      questionType,
+      correctOptions:
+        questionType === "multipleChoice"
+          ? [Number(current.correctOptions?.[0] ?? 0)]
+          : current.correctOptions?.length
+            ? current.correctOptions
+            : [0],
+    }));
   };
 
-  const addAcceptedAnswer = () => {
-    setForm({ ...form, acceptedAnswers: [...form.acceptedAnswers, ""] });
+  const removeOption = (index) => {
+    setForm((current) => {
+      if (current.options.length <= 2) return current;
+
+      const options = current.options.filter((_, optionIndex) => optionIndex !== index);
+      const correctOptions = (current.correctOptions || [])
+        .filter((optionIndex) => optionIndex !== index)
+        .map((optionIndex) => (optionIndex > index ? optionIndex - 1 : optionIndex));
+
+      return {
+        ...current,
+        options,
+        correctOptions: correctOptions.length ? correctOptions : [0],
+      };
+    });
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const toggleCorrectOption = (index) => {
+    setForm((current) => {
+      if (current.questionType === "multipleChoice") {
+        return { ...current, correctOptions: [index] };
+      }
+
+      const next = new Set(current.correctOptions || []);
+
+      if (next.has(index) && next.size > 1) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+
+      return { ...current, correctOptions: Array.from(next).sort((a, b) => a - b) };
+    });
+  };
+
+  const handleCancel = () => {
+    setForm(createDefaultForm());
+    onCancel?.();
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+
+    const questionText = form.questionText.trim();
+    const optionRows = form.options
+      .map((option, index) => ({ text: option.trim(), originalIndex: index }))
+      .filter((option) => option.text);
+
+    if (!questionText) {
+      alert("Please enter the question.");
+      return;
+    }
+
+    if (form.questionType === "oneWord") {
+      const correctAnswer = form.correctAnswer.trim();
+      const acceptedAnswers = form.acceptedAnswers
+        .split(",")
+        .map((answer) => answer.trim())
+        .filter(Boolean);
+
+      if (!correctAnswer && acceptedAnswers.length === 0) {
+        alert("Please enter the correct one word answer.");
+        return;
+      }
+
+      const payload = {
+        questionText: formatQuestionText(questionText),
+        questionType: "oneWord",
+        options: [],
+        correctOption: null,
+        correctOptions: [],
+        correctAnswer,
+        acceptedAnswers,
+        marks: Math.max(1, Number(form.marks || 1)),
+        difficulty: form.difficulty,
+      };
+
+      await onSave(payload);
+
+      if (!editingQuestion) {
+        setForm(createDefaultForm());
+      }
+
+      return;
+    }
+
+    if (optionRows.length < 2) {
+      alert("Please enter at least two options.");
+      return;
+    }
+
+    const correctOptions = optionRows
+      .map((option, filteredIndex) =>
+        selectedCorrect.has(option.originalIndex) ? filteredIndex : null
+      )
+      .filter((index) => index !== null);
+
+    if (correctOptions.length === 0) {
+      alert("Mark at least one non-empty option as correct.");
+      return;
+    }
+
+    if (form.questionType === "multipleChoice" && correctOptions.length !== 1) {
+      alert("Single select questions need exactly one correct option.");
+      return;
+    }
+
     const payload = {
-      ...form,
-      options: showChoiceOptions ? normalizeList(form.options) : undefined,
-      correctOption: form.questionType === "multipleChoice" ? Number(form.correctOption) : undefined,
-      correctOptions: form.questionType === "multiSelect" ? (form.correctOptions || []).map(Number) : undefined,
-      correctAnswer: isTextQuestion ? form.correctAnswer.trim().toLowerCase() : undefined,
-      acceptedAnswers: isTextQuestion ? normalizeList(form.acceptedAnswers.map((answer) => answer.toLowerCase())) : undefined,
+      questionText: formatQuestionText(questionText),
+      questionType: form.questionType,
+      options: optionRows.map((option) => option.text),
+      correctOption: form.questionType === "multipleChoice" ? correctOptions[0] : null,
+      correctOptions: form.questionType === "multiSelect" ? correctOptions : [],
+      correctAnswer: "",
+      acceptedAnswers: [],
+      marks: Math.max(1, Number(form.marks || 1)),
+      difficulty: form.difficulty,
     };
 
     await onSave(payload);
 
     if (!editingQuestion) {
-      setForm(defaultForm);
+      setForm(createDefaultForm());
     }
   };
-
-  const handleCancel = () => {
-    setForm(defaultForm);
-    if (onCancel) onCancel();
-  };
-
-  const questionTypes = [
-    { value: "multipleChoice", label: "Multiple Choice", icon: "◉" },
-    { value: "multiSelect", label: "Multiple Select", icon: "☐" },
-    { value: "oneWord", label: "One Word", icon: "✍" },
-    { value: "fillInTheBlank", label: "Fill in Blank", icon: "━" },
-  ];
 
   return (
     <form className="question-form card" onSubmit={submit}>
       <div className="form-header">
-        <h2>{editingQuestion ? "Edit Question" : "Add Question"}</h2>
+        <div>
+          <h2>{editingQuestion ? "Edit Question" : "Add Question"}</h2>
+          <p>Choose a type, then add options or a one word answer.</p>
+        </div>
       </div>
 
-      {/* Step 1: Question Type Selector */}
-      <div className="form-section compact">
-        <div className="section-label">
-          <span className="step-number">1</span>
-          <span className="section-title">Question Type</span>
-        </div>
-        <div className="question-type-grid compact">
-          {questionTypes.map((type) => (
+      <label className="question-label-field">
+        <span>Question</span>
+        <textarea
+          value={form.questionText}
+          onChange={(event) => setForm({ ...form, questionText: event.target.value })}
+          placeholder="Write the question here"
+          rows={3}
+          required
+        />
+      </label>
+
+      <div className="question-inline-settings" aria-label="Question settings">
+        <label className="question-type-field">
+          <span>Question type</span>
+          <select
+            value={form.questionType}
+            onChange={(event) => updateQuestionType(event.target.value)}
+          >
+            {questionTypeOptions.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Marks</span>
+          <input
+            type="number"
+            min="1"
+            value={form.marks}
+            onChange={(event) => setForm({ ...form, marks: Number(event.target.value) })}
+          />
+        </label>
+
+        <div className="difficulty-segment" role="group" aria-label="Difficulty">
+          {difficultyOptions.map((difficulty) => (
             <button
-              key={type.value}
+              key={difficulty}
               type="button"
-              className={`type-button ${form.questionType === type.value ? "active" : ""}`}
-              onClick={() => setForm({ ...form, questionType: type.value })}
+              className={form.difficulty === difficulty ? "active" : ""}
+              onClick={() => setForm({ ...form, difficulty })}
             >
-              <span className="type-icon">{type.icon}</span>
-              <span className="type-label">{type.label}</span>
+              {difficulty}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Step 2: Question Settings */}
-      <div className="form-section compact">
-        <div className="section-label">
-          <span className="step-number">2</span>
-          <span className="section-title">Settings</span>
-        </div>
-        <div className="settings-grid">
-          <label className="field-group compact">
-            <span>Marks</span>
+      {form.questionType === "oneWord" ? (
+        <div className="text-answer-editor">
+          <label className="question-label-field">
+            <span>Correct answer</span>
             <input
-              type="number"
-              min="1"
-              value={form.marks}
-              onChange={(e) => setForm({ ...form, marks: Number(e.target.value) })}
-              placeholder="Points"
+              type="text"
+              value={form.correctAnswer}
+              onChange={(event) => setForm({ ...form, correctAnswer: event.target.value })}
+              placeholder="Type the correct answer"
             />
           </label>
-          <label className="field-group compact">
-            <span>Difficulty</span>
-            <select
-              value={form.difficulty}
-              onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
+
+          <label className="question-label-field">
+            <span>Accepted alternatives</span>
+            <input
+              type="text"
+              value={form.acceptedAnswers}
+              onChange={(event) => setForm({ ...form, acceptedAnswers: event.target.value })}
+              placeholder="Optional, comma separated"
+            />
           </label>
         </div>
-      </div>
+      ) : (
+        <div className="question-options-editor">
+          <div className="options-heading">
+            <span>Options</span>
+            <small>
+              {form.questionType === "multiSelect"
+                ? "Check one or more correct answers."
+                : "Select one correct answer."}
+            </small>
+          </div>
 
-      {/* Step 3: Question Text */}
-      <div className="form-section compact">
-        <div className="section-label">
-          <span className="step-number">3</span>
-          <span className="section-title">Question</span>
-        </div>
-        <div className="field-group field-group-wide">
-          <RichTextEditor
-            value={form.questionText}
-            onChange={(val) => setForm({ ...form, questionText: val })}
-            placeholder="Write your question here..."
-          />
-        </div>
-      </div>
+          <div className="option-row-list">
+            {form.options.map((option, index) => {
+              const isCorrect = selectedCorrect.has(index);
 
-      {/* Step 4: Options/Answers */}
-      {showChoiceOptions && (
-        <div className="form-section compact">
-          <div className="section-label">
-            <span className="step-number">4</span>
-            <span className="section-title">Answer Options</span>
-          </div>
-          <div className="options-grid">
-            {form.options.map((opt, i) => (
-              <div key={i} className="option-input-group compact">
-                <span className="option-letter">{String.fromCharCode(65 + i)}</span>
-                <input
-                  type="text"
-                  placeholder={`Option ${i + 1}`}
-                  value={opt}
-                  onChange={(e) => changeOption(i, e.target.value)}
-                  className="option-input"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              return (
+                <div className={`option-edit-row ${isCorrect ? "correct" : ""}`} key={index}>
+                  <span className="option-letter">{String.fromCharCode(65 + index)}</span>
 
-      {/* Step 5: Mark Correct Answer */}
-      {form.questionType === "multipleChoice" && (
-        <div className="form-section compact">
-          <div className="section-label">
-            <span className="step-number">5</span>
-            <span className="section-title">Correct Answer</span>
-          </div>
-          <div className="correct-answer-grid compact">
-            {form.options.map((option, i) => (
-              <button
-                key={i}
-                type="button"
-                className={`answer-button compact ${form.correctOption === i ? "active" : ""}`}
-                onClick={() => setForm({ ...form, correctOption: i })}
-              >
-                <span className="answer-letter">{String.fromCharCode(65 + i)}</span>
-                <span className="answer-text">{option || `Option ${i + 1}`}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(event) => updateOption(index, event.target.value)}
+                    placeholder={`Option ${index + 1}`}
+                  />
 
-      {form.questionType === "multiSelect" && (
-        <div className="form-section compact">
-          <div className="section-label">
-            <span className="step-number">5</span>
-            <span className="section-title">Correct Answers</span>
-          </div>
-          <div className="checkbox-grid compact">
-            {form.options.map((option, index) => (
-              <label key={index} className="checkbox-item compact">
-                <input
-                  type="checkbox"
-                  checked={(form.correctOptions || []).includes(index)}
-                  onChange={() => toggleCorrectMulti(index)}
-                />
-                <span className="check-icon">✓</span>
-                <span className="check-label">{option || `Option ${index + 1}`}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
+                  <label className="option-correct-toggle">
+                    <input
+                      type={form.questionType === "multiSelect" ? "checkbox" : "radio"}
+                      name="correct-option"
+                      checked={isCorrect}
+                      onChange={() => toggleCorrectOption(index)}
+                    />
+                    <span>Correct</span>
+                  </label>
 
-      {isTextQuestion && (
-        <div className="form-section compact">
-          <div className="section-label">
-            <span className="step-number">5</span>
-            <span className="section-title">Accepted Answers</span>
-          </div>
-          <div className="text-answer-group compact">
-            <label className="field-group compact">
-              <span>Primary Answer</span>
-              <input
-                type="text"
-                value={form.correctAnswer}
-                placeholder="Enter the correct answer"
-                onChange={(e) => setForm({ ...form, correctAnswer: e.target.value.toLowerCase() })}
-              />
-            </label>
-
-            {form.acceptedAnswers.length > 0 && (
-              <div className="alternate-answers">
-                <div className="alternate-header">
-                  <span>Alternative Answers</span>
-                  <button type="button" className="add-answer-btn" onClick={addAcceptedAnswer}>
-                    + Add
+                  <button
+                    type="button"
+                    className="remove-option-button"
+                    onClick={() => removeOption(index)}
+                    disabled={form.options.length <= 2}
+                  >
+                    Remove
                   </button>
                 </div>
-                {form.acceptedAnswers.map((answer, index) => (
-                  <input
-                    key={index}
-                    type="text"
-                    value={answer}
-                    placeholder={`Alternative answer ${index + 1}`}
-                    onChange={(e) => changeAcceptedAnswer(index, e.target.value)}
-                    className="alternate-input"
-                  />
-                ))}
-              </div>
-            )}
+              );
+            })}
           </div>
+
+          <button type="button" className="add-option-button" onClick={addOption}>
+            Add option
+          </button>
         </div>
       )}
 
-      {/* Action Buttons */}
       <div className="form-actions compact">
         <button type="submit" className="primary-button submit-btn">
-          {editingQuestion ? "Update" : "Add"}
+          {editingQuestion ? "Update question" : "Add question"}
         </button>
         {editingQuestion && (
           <button type="button" className="secondary-button" onClick={handleCancel}>

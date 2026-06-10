@@ -16,7 +16,8 @@ export default function AddQuestions() {
   const dragIndexRef = React.useRef(null);
 
   const load = useCallback(() => {
-    api.get(`/exams/${examId}/questions`, { params: { limit: 100 } })
+    api
+      .get(`/exams/${examId}/questions`, { params: { limit: 100 } })
       .then((res) => {
         const data = res.data.data || res.data;
         setQuestions(Array.isArray(data) ? data : []);
@@ -27,7 +28,9 @@ export default function AddQuestions() {
       });
   }, [examId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const save = async (form) => {
     try {
@@ -40,6 +43,7 @@ export default function AddQuestions() {
         await api.post(`/exams/${examId}/questions`, form);
         toast.success("Question added");
       }
+
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to save question");
@@ -51,30 +55,34 @@ export default function AddQuestions() {
     setEditingQuestion(question);
   };
 
-  const handleDragStart = (e, index) => {
+  const handleDragStart = (event, index) => {
     dragIndexRef.current = index;
-    e.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+  const handleDragOver = (event, index) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
     setDragOverIndex(index);
   };
 
-  const handleDrop = async (e, dropIndex) => {
-    e.preventDefault();
+  const handleDrop = async (event, dropIndex) => {
+    event.preventDefault();
+
     const dragIndex = dragIndexRef.current;
+
     if (dragIndex === null || dragIndex === dropIndex) {
       setDragOverIndex(null);
       return;
     }
+
     const reordered = [...questions];
     const [moved] = reordered.splice(dragIndex, 1);
     reordered.splice(dropIndex, 0, moved);
     setQuestions(reordered);
     setDragOverIndex(null);
     dragIndexRef.current = null;
+
     try {
       await api.put(`/exams/${examId}/questions/reorder`, {
         questionIds: reordered.map((q) => q._id),
@@ -92,8 +100,8 @@ export default function AddQuestions() {
 
   const deleteQuestion = async (questionId) => {
     if (deletingId === questionId) {
-      // Confirm deletion
       setIsDeleting(true);
+
       try {
         await api.delete(`/questions/${questionId}`);
         toast.success("Question deleted");
@@ -104,10 +112,11 @@ export default function AddQuestions() {
         toast.error(err.response?.data?.message || "Failed to delete question");
         setIsDeleting(false);
       }
-    } else {
-      // Show confirmation
-      setDeletingId(questionId);
+
+      return;
     }
+
+    setDeletingId(questionId);
   };
 
   if (questions === null) return <Loader />;
@@ -149,20 +158,23 @@ export default function AddQuestions() {
               className={`card question-list-item${dragOverIndex === idx ? " drag-over" : ""}`}
               key={q._id}
               draggable
-              onDragStart={(e) => handleDragStart(e, idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDrop={(e) => handleDrop(e, idx)}
+              onDragStart={(event) => handleDragStart(event, idx)}
+              onDragOver={(event) => handleDragOver(event, idx)}
+              onDrop={(event) => handleDrop(event, idx)}
               onDragEnd={handleDragEnd}
             >
               <div className="question-header">
                 <div className="question-number">
-                  <span className="drag-handle" title="Drag to reorder">⠿</span>
+                  <span className="drag-handle" title="Drag to reorder">
+                    ::
+                  </span>
                   <strong>Q{idx + 1}</strong>
                   <span className="question-marks">{q.marks} marks</span>
                   <span className={`question-difficulty difficulty-${q.difficulty}`}>
                     {q.difficulty}
                   </span>
                 </div>
+
                 <div className="question-actions">
                   <button
                     type="button"
@@ -172,6 +184,7 @@ export default function AddQuestions() {
                   >
                     Edit
                   </button>
+
                   {deletingId === q._id ? (
                     <>
                       <button
@@ -180,7 +193,7 @@ export default function AddQuestions() {
                         onClick={() => deleteQuestion(q._id)}
                         disabled={isDeleting}
                       >
-                        {isDeleting ? "Deleting…" : "Confirm Delete?"}
+                        {isDeleting ? "Deleting..." : "Confirm Delete?"}
                       </button>
                       <button
                         type="button"
@@ -202,35 +215,36 @@ export default function AddQuestions() {
                   )}
                 </div>
               </div>
+
               <div className="question-text" dangerouslySetInnerHTML={{ __html: q.questionText }} />
+
               <div className="question-options">
                 {Array.isArray(q.options) && q.options.length > 0 ? (
-                  q.options.map((opt, i) => (
-                    <div
-                      key={i}
-                      className={`question-option ${
-                        q.questionType === "multipleChoice" && i === q.correctOption
-                          ? "correct"
-                          : ""
-                      }`}
-                    >
-                      <span className="option-label">{String.fromCharCode(65 + i)}:</span>
-                      <span>{opt}</span>
-                      {q.questionType === "multipleChoice" && i === q.correctOption && (
-                        <span className="correct-badge">✓ Correct</span>
-                      )}
-                      {q.questionType === "multiSelect" && Array.isArray(q.correctOptions) && q.correctOptions.includes(i) && (
-                        <span className="correct-badge">✓ Correct</span>
-                      )}
-                    </div>
-                  ))
+                  q.options.map((opt, i) => {
+                    const isCorrect =
+                      (q.questionType === "multipleChoice" && i === q.correctOption) ||
+                      (q.questionType === "multiSelect" &&
+                        Array.isArray(q.correctOptions) &&
+                        q.correctOptions.includes(i));
+
+                    return (
+                      <div
+                        key={i}
+                        className={`question-option ${isCorrect ? "correct" : ""}`}
+                      >
+                        <span className="option-label">{String.fromCharCode(65 + i)}:</span>
+                        <span>{opt}</span>
+                        {isCorrect && <span className="correct-badge">Correct</span>}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="muted">
                     {Array.isArray(q.acceptedAnswers) && q.acceptedAnswers.length > 0
-                      ? `Accepted answers: ${q.acceptedAnswers.join(', ')}`
+                      ? `Accepted answers: ${q.acceptedAnswers.join(", ")}`
                       : q.correctAnswer
                         ? `Correct answer: ${q.correctAnswer}`
-                        : 'No options configured'}
+                        : "No options configured"}
                   </div>
                 )}
               </div>

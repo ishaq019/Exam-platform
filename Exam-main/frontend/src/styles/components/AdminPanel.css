@@ -291,6 +291,20 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.question-management .page-header {
+  margin-bottom: var(--space-sm);
+}
+
+.question-management > .card {
+  margin-block: 0;
+}
+
+.question-management > .question-form {
+  margin-inline: auto;
 }
 
 .question-list-item {

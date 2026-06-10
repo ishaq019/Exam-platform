@@ -1,0 +1,39 @@
+{
+  "name": "quiz-application-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "homepage": "https://syedishaq.me/Exam",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --fix --ext .js,.jsx",
+    "format": "prettier --write .",
+    "predeploy": "npm run build",
+    "deploy": "npm run build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tiptap/extension-link": "^3.23.5",
+    "@tiptap/extension-placeholder": "^3.23.5",
+    "@tiptap/extension-underline": "^3.23.5",
+    "@tiptap/pm": "^3.23.5",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
+    "axios": "^1.16.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-is": "^19.2.7",
+    "react-router-dom": "^6.30.3",
+    "react-toastify": "^11.1.0",
+    "recharts": "^3.8.1",
+    "vite": "^6.4.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "prettier": "^3.6.2"
+  }
+}

@@ -1,0 +1,347 @@
+/* Form Component Styles */
+
+.form {
+  max-width: 760px;
+  margin: var(--space-xl) auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field-group-wide {
+  grid-column: 1 / -1;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  grid-column: 1 / -1;
+  cursor: pointer;
+}
+
+.field-group label {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.field-group input,
+.field-group textarea,
+.field-group select {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.field-group input:focus,
+.field-group textarea:focus,
+.field-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.field-group textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+}
+
+.field-group select {
+  cursor: pointer;
+}
+
+/* Form validation states */
+.field-group input.error,
+.field-group textarea.error,
+.field-group select.error {
+  border-color: var(--error);
+}
+
+.field-group .error-message {
+  color: var(--error);
+  font-size: 0.875rem;
+  margin-top: var(--space-xs);
+}
+
+/* Form actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border);
+}
+
+.form-actions.center {
+  justify-content: center;
+}
+
+.form-actions.space-between {
+  justify-content: space-between;
+}
+
+/* Survey toggle specific styles */
+.survey-toggle-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.survey-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  margin: 0;
+}
+
+.survey-toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.survey-toggle-row span {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Loading and disabled states */
+.field-group input:disabled,
+.field-group textarea:disabled,
+.field-group select:disabled {
+  background: var(--surface-3);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.field-group.loading input,
+.field-group.loading textarea,
+.field-group.loading select {
+  background-image: linear-gradient(90deg, var(--surface-3) 25%, var(--surface) 50%, var(--surface-3) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .form {
+    margin: var(--space-lg) var(--space-md);
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .survey-toggle-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+}
+
+/* Specific form component styles */
+.auth-form .form-grid {
+  grid-template-columns: 1fr;
+}
+
+.auth-form .field-group {
+  margin-bottom: var(--space-lg);
+}
+
+.question-form .field-group {
+  margin-bottom: var(--space-md);
+}
+
+.question-form .field-group-wide {
+  margin-bottom: var(--space-lg);
+}
+
+/* File upload styling */
+.file-upload {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  width: 100%;
+}
+
+.file-upload input[type="file"] {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.file-upload-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  transition: all var(--transition);
+}
+
+.file-upload:hover .file-upload-label {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.file-upload.has-file .file-upload-label {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+/* Character counter */
+.character-counter {
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: var(--space-xs);
+}
+
+.character-counter.warning {
+  color: var(--warning);
+}
+
+.character-counter.error {
+  color: var(--error);
+}
+
+/* ── Rich Text Editor ─────────────────────────────────── */
+
+.rte-wrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color var(--transition);
+  overflow: hidden;
+}
+
+.rte-wrapper:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.rte-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-3);
+}
+
+.rte-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.rte-toolbar-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.rte-toolbar-btn-active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.rte-toolbar-btn svg {
+  pointer-events: none;
+}
+
+
+.rte-wrapper .ProseMirror.is-editor-empty:first-child::before,
+.rte-wrapper .ProseMirror p.is-empty.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.rte-wrapper .ProseMirror:focus {
+  outline: none;
+}
+
+.rte-wrapper .ProseMirror {
+  padding: 10px 12px;
+  min-height: 80px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+  outline: none;
+}
+
+.rte-wrapper .ProseMirror p {
+  margin: 0 0 4px 0;
+}
+
+.rte-wrapper .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.rte-wrapper .ProseMirror strong { font-weight: 700; }
+.rte-wrapper .ProseMirror em { font-style: italic; }
+.rte-wrapper .ProseMirror u { text-decoration: underline; }
+
+.rte-wrapper .ProseMirror a {
+  color: var(--primary);
+  text-decoration: underline;
+}
